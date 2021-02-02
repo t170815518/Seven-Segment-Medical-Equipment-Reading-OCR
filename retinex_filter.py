@@ -3,28 +3,32 @@ import cv2 as cv
 from math import floor, inf
 from scipy import ndimage
 from scipy.interpolate import interpn
+import matplotlib.pyplot as plt
 
 
-def retinex_filter(img, sampling_spatial, sampling_range, gamma, sigma_range=0.2, sigma_spatial=30, is_show_plot=False):
+def retinex_filter(img, sampling_spatial, sampling_range, gamma, sigma_range=0.2, sigma_spatial=30, is_show_plot=True):
     """
     Retinex Filter function should be applied to the v channel of HSV picture
     :param img: np.array in 1 channel
     """
-    img = np.where(img != 0, img, np.asarray([0.001]))  # avoid 0 value leading to -inf when log
+    img[img == 0] = 0.001  # avoid 0 value leading to -inf when log
     illumination = np.log(img)
     reflection = illumination
 
     # find illumination by filtering with envelope mode
     illumination = fast_bilateral_filter(illumination, sigma_spatial, sigma_range, sampling_spatial, sampling_range)
 
-    if is_show_plot:
-        cv.imshow("illumination", illumination)
-        cv.waitKey(0)
+    # if is_show_plot:
+    #     cv.imshow("illumination", reflection - illumination)
+    #     cv.waitKey(0)
 
     # find reflection by filtering with regular mode at this point reflection stores original image
     reflection = (reflection - illumination)
     reflection = fast_bilateral_filter(reflection, sigma_spatial, sigma_range, sampling_spatial, sampling_range)
 
+    if is_show_plot:
+        plt.imshow(np.exp(illumination), cmap='gray', clim=(0, 1))
+        plt.show()
     # apply gamma correction to illumination
     illumination = 1 / gamma * illumination
 
