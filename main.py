@@ -1,28 +1,17 @@
-from PIL import Image
-from types import SimpleNamespace
-import cv2 as cv
-import numpy as np
-import random as rng
-from math import floor
-from skimage.filters import threshold_sauvola, threshold_niblack
-from preprocess import preprocess, Sauvola_binarize
-from blob_extraction import blob_extraction_CC, blob_extraction_MSER
-import matplotlib.pyplot as plt
-from homofilt import HomomorphicFilter
-import seaborn as sb
-from sklearn.preprocessing import normalize
-from collections import defaultdict
-from pytesseract import image_to_string
 import os
 
+import cv2 as cv
+import matplotlib.pyplot as plt
+from pytesseract import image_to_string
 
-if __name__ == '__main__':
-    img_path = "img/actual_user_input.PNG"
+from SevenSegOCR.preprocessing import preprocess
+
+
+def contour_method():
+    img_path = "img/"
     BIN_Y = 70
     BIN_X = 50
-    DSIZE = (500, 700)
     os.environ["TESSDATA_PREFIX"] = os.path.join(os.getcwd(), "letsgodigital")
-
     img = cv.imread(img_path, cv.IMREAD_COLOR)
     img = cv.resize(img, DSIZE)
     img = cv.cvtColor(img, cv.COLOR_BGR2YCR_CB)
@@ -34,12 +23,10 @@ if __name__ == '__main__':
     _, binary_img = cv.threshold(blur, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
     plt.imshow(binary_img, cmap="gray")
     plt.show()
-
     kernal = cv.getStructuringElement(cv.MORPH_RECT, (90, 10))
     dilation = cv.dilate(binary_img, kernal, iterations=1)
     plt.imshow(dilation, cmap="gray")
     plt.show()
-
     contours, hierarchy = cv.findContours(dilation, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     show_img = cv.cvtColor(binary_img, cv.COLOR_GRAY2BGR)
     boxes = []
@@ -47,7 +34,6 @@ if __name__ == '__main__':
         (x, y, w, h) = cv.boundingRect(c)
         boxes.append((x, y, w, h))
         cv.rectangle(show_img, (x, y), (x + w, y + h), (255, 255, 0), 4)
-
     # cv.imshow("contours", show_img)
     # cv.waitKey(0)
     box_info = {}
@@ -57,7 +43,8 @@ if __name__ == '__main__':
 
         plt.imshow(crop_img, cmap="gray")
         plt.show()
-        result = image_to_string(crop_img, lang="letsgodigital", config="--psm 13 -c tessedit_char_whitelist=.0123456789")
+        result = image_to_string(crop_img, lang="letsgodigital",
+                                 config="--psm 13 -c tessedit_char_whitelist=.0123456789")
         box_info[i] = {"area": w * h, "reading": result}
     boxes_info = list(box_info.items())
     box_info = sorted(boxes_info, key=lambda x: x[1]["area"], reverse=True)
@@ -71,3 +58,18 @@ if __name__ == '__main__':
                 print(reading)
     except IndexError:
         raise ValueError("No reading recognized.")
+
+
+if __name__ == '__main__':
+    img_path = "img/pure_figure.png"
+    DSIZE = (500, 700)
+
+    img = cv.imread(img_path, cv.IMREAD_COLOR)
+    img = cv.resize(img, DSIZE)
+    img = cv.cvtColor(img, cv.COLOR_BGR2YUV)
+    cv.imshow("1", img[:, :, 0])
+    cv.imshow("2", img[:, :, 1])
+    cv.imshow("3", img[:, :, 2])
+    cv.waitKey(0)
+
+    preprocess(img[:, :, 1])
